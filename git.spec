@@ -3,7 +3,7 @@
 # Pass --without docs to rpmbuild if you don't want the documentation
 Name:           git
 Version:        1.7.1
-Release:        4%{?dist}.1
+Release:        8%{?dist}
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -25,8 +25,15 @@ Patch5:         0001-imap-send-move-ifdef-around.patch
 Patch6:         0002-imap-send-the-subject-of-SSL-certificate-must-match-.patch
 Patch7:         0003-imap-send-support-subjectAltName-as-well.patch
 
-#CVE
-Patch8:        0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
+# CVE
+Patch8:         0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
+
+# RHEL >= 6.9
+Patch9:         0001-smart-http-Don-t-change-POST-to-GET-when-following-r.patch
+Patch10:        git-http.patch
+Patch11:        git-1.7.1-shortlog-memory-corruption.patch
+Patch12:        git-1.7.1-submodules.patch
+Patch13:        0001-http-control-GSSAPI-credential-delegation.patch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -217,6 +224,11 @@ Requires:       emacs-git = %{version}-%{release}
 %patch6 -p1
 %patch7 -p1
 %patch8 -p1
+%patch9 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
 
 # Use these same options for every invocation of 'make'.
 # Otherwise it will rebuild in %%install due to flags changes.
@@ -431,9 +443,29 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
-* Fri Mar 18 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-4.1
+* Thu Dec 08 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-8
+- fixes previous patch which add -f option for "git submodule add"
+  which incorectly used unsupported option --ignore-missing for
+  "git add --dry-run"
+- add control of GSSAPI credential delegation to enable HTTP(S)-SSO
+  authentication
+  Resolves: #1207253 #1368384
+
+* Fri Sep 30 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-7
+- fixes memory corruption on git shortlog
+- add -f option for "git submodule add" to add files even when
+  these are included in .gitignore
+- improve performance of extremly slow http(s)
+- fix cloning using http(s) protocol when redirection is requested
+  Resolves: #874659 #1207253 #1237395 #1289984
+
+* Sat Mar 19 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-6
+- remove needles part of previous fix
+  Resolves: #1318253
+
+* Fri Mar 18 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-5
 - fix heap overflow CVE-2016-2315 CVE-2016-2324
-  Resolves: #1318252
+  Resolves: #1318253
 
 * Tue Feb 26 2013 Adam Tkac <atkac redhat com> 1.7.1-4
 - fix CVE-2013-0308

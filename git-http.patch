@@ -1,0 +1,37 @@
+commit 6f9dd67ffea3e86276a73e522ce1186a99bbe65d
+Author: Mika Fischer <mika.fischer@zoopnet.de>
+Date:   Fri Nov 4 15:19:25 2011 +0100
+
+    http.c: Use curl_multi_fdset to select on curl fds instead of just sleeping
+    
+    Instead of sleeping unconditionally for a 50ms, when no data can be read
+    from the http connection(s), use curl_multi_fdset() to obtain the actual
+    file descriptors of the open connections and use them in the select call.
+    This way, the 50ms sleep is interrupted when new data arrives.
+    
+    Signed-off-by: Mika Fischer <mika.fischer@zoopnet.de>
+    Helped-by: Daniel Stenberg <daniel@haxx.se>
+    Signed-off-by: Junio C Hamano <gitster@pobox.com>
+
+diff --git a/http.c b/http.c
+index b2ae8de..a815f62 100644
+--- a/http.c
++++ b/http.c
+@@ -651,14 +651,14 @@ void run_active_slot(struct active_request_slot *slot)
+ 		}
+ 
+ 		if (slot->in_use && !data_received) {
+-			max_fd = 0;
++			max_fd = -1;
+ 			FD_ZERO(&readfds);
+ 			FD_ZERO(&writefds);
+ 			FD_ZERO(&excfds);
++			curl_multi_fdset(curlm, &readfds, &writefds, &excfds, &max_fd);
+ 			select_timeout.tv_sec = 0;
+ 			select_timeout.tv_usec = 50000;
+-			select(max_fd, &readfds, &writefds,
+-			       &excfds, &select_timeout);
++			select(max_fd+1, &readfds, &writefds, &excfds, &select_timeout);
+ 		}
+ 	}
+ #else

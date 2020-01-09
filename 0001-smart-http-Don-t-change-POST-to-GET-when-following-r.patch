@@ -1,0 +1,91 @@
+From 311e2ea0062bf09d6f78f5458eeb14dbc6c092ea Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Sat, 25 Sep 2010 12:20:35 +0800
+Subject: [PATCH] smart-http: Don't change POST to GET when following redirect
+
+For a long time (29508e1 "Isolate shared HTTP request functionality", Fri
+Nov 18 11:02:58 2005), we've followed HTTP redirects with
+CURLOPT_FOLLOWLOCATION.
+
+However, when the remote HTTP server returns a redirect the default
+libcurl action is to change a POST request into a GET request while
+following the redirect, but the remote http backend does not expect
+that.
+
+Fix this by telling libcurl to always keep the request as type POST with
+CURLOPT_POSTREDIR.
+
+For users of libcurl older than 7.19.1, use CURLOPT_POST301 instead,
+which only follows 301s instead of both 301s and 302s.
+
+Signed-off-by: Andreas Schwab <schwab@linux-m68k.org>
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+---
+ http.c                  | 5 +++++
+ t/lib-httpd/apache.conf | 7 +++++++
+ t/t5551-http-fetch.sh   | 8 ++++++++
+ 3 files changed, 20 insertions(+)
+
+diff --git a/http.c b/http.c
+index 0a5011f..17bcf19 100644
+--- a/http.c
++++ b/http.c
+@@ -279,6 +279,11 @@ static CURL *get_curl_handle(void)
+ 	}
+ 
+ 	curl_easy_setopt(result, CURLOPT_FOLLOWLOCATION, 1);
++#if LIBCURL_VERSION_NUM >= 0x071301
++	curl_easy_setopt(result, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
++#elif LIBCURL_VERSION_NUM >= 0x071101
++	curl_easy_setopt(result, CURLOPT_POST301, 1);
++#endif
+ 
+ 	if (getenv("GIT_CURL_VERBOSE"))
+ 		curl_easy_setopt(result, CURLOPT_VERBOSE, 1);
+diff --git a/t/lib-httpd/apache.conf b/t/lib-httpd/apache.conf
+index 4961505..f41c7c6 100644
+--- a/t/lib-httpd/apache.conf
++++ b/t/lib-httpd/apache.conf
+@@ -17,6 +17,9 @@ ErrorLog error.log
+ <IfModule !mod_env.c>
+ 	LoadModule env_module modules/mod_env.so
+ </IfModule>
++<IfModule !mod_rewrite.c>
++	LoadModule rewrite_module modules/mod_rewrite.so
++</IFModule>
+ 
+ Alias /dumb/ www/
+ 
+@@ -36,6 +39,10 @@ ScriptAlias /smart_noexport/ ${GIT_EXEC_PATH}/git-http-backend/
+ 	Options ExecCGI
+ </Files>
+ 
++RewriteEngine on
++RewriteRule ^/smart-redir-perm/(.*)$ /smart/$1 [R=301]
++RewriteRule ^/smart-redir-temp/(.*)$ /smart/$1 [R=302]
++
+ <IfDefine SSL>
+ LoadModule ssl_module modules/mod_ssl.so
+ 
+diff --git a/t/t5551-http-fetch.sh b/t/t5551-http-fetch.sh
+index fd19121..26d3557 100755
+--- a/t/t5551-http-fetch.sh
++++ b/t/t5551-http-fetch.sh
+@@ -101,5 +101,13 @@ test_expect_success 'used upload-pack service' '
+ 	test_cmp exp act
+ '
+ 
++test_expect_success 'follow redirects (301)' '
++	git clone $HTTPD_URL/smart-redir-perm/repo.git --quiet repo-p
++'
++
++test_expect_success 'follow redirects (302)' '
++	git clone $HTTPD_URL/smart-redir-temp/repo.git --quiet repo-t
++'
++
+ stop_httpd
+ test_done
+-- 
+2.4.3
+

@@ -3,7 +3,7 @@
 # Pass --without docs to rpmbuild if you don't want the documentation
 Name:           git
 Version:        1.7.1
-Release:        3%{?dist}.1
+Release:        4%{?dist}.1
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -13,17 +13,21 @@ Source1:        git-init.el
 Source2:        git.xinetd.in
 Source3:        git.conf.httpd
 Source4:        git-gui.desktop
-Source5:	gitweb.conf.in
+Source5:        gitweb.conf.in
 Patch0:         git-1.5-gitweb-home-link.patch
 # https://bugzilla.redhat.com/490602
 Patch1:         git-cvsimport-Ignore-cvsps-2.2b1-Branches-output.patch
 # https://bugzilla.redhat.com/500137
 Patch2:         git-1.6-update-contrib-hooks-path.patch
 Patch3:         git17-rh618108.patch
-Patch4:		git171-CVE-2010-3906.patch
-Patch5:		0001-imap-send-move-ifdef-around.patch
-Patch6:		0002-imap-send-the-subject-of-SSL-certificate-must-match-.patch
-Patch7:		0003-imap-send-support-subjectAltName-as-well.patch
+Patch4:         git171-CVE-2010-3906.patch
+Patch5:         0001-imap-send-move-ifdef-around.patch
+Patch6:         0002-imap-send-the-subject-of-SSL-certificate-must-match-.patch
+Patch7:         0003-imap-send-support-subjectAltName-as-well.patch
+
+#CVE
+Patch8:        0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
+
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  desktop-file-utils
@@ -212,6 +216,7 @@ Requires:       emacs-git = %{version}-%{release}
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
+%patch8 -p1
 
 # Use these same options for every invocation of 'make'.
 # Otherwise it will rebuild in %%install due to flags changes.
@@ -426,7 +431,11 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
-* Tue Feb 26 2013 Adam Tkac <atkac redhat com> 1.7.1-3.1
+* Fri Mar 18 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-4.1
+- fix heap overflow CVE-2016-2315 CVE-2016-2324
+  Resolves: #1318252
+
+* Tue Feb 26 2013 Adam Tkac <atkac redhat com> 1.7.1-4
 - fix CVE-2013-0308
 
 * Thu Dec 16 2010 Adam Tkac <atkac redhat com> 1.7.1-3

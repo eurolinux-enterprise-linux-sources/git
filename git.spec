@@ -3,7 +3,7 @@
 # Pass --without docs to rpmbuild if you don't want the documentation
 Name:           git
 Version:        1.7.1
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -27,6 +27,7 @@ Patch7:         0003-imap-send-support-subjectAltName-as-well.patch
 
 # CVE
 Patch8:         0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
+Patch14:        git-cve-2017-1000117.patch
 
 # RHEL >= 6.9
 Patch9:         0001-smart-http-Don-t-change-POST-to-GET-when-following-r.patch
@@ -229,6 +230,7 @@ Requires:       emacs-git = %{version}-%{release}
 %patch11 -p1
 %patch12 -p1
 %patch13 -p1
+%patch14 -p1
 
 # Use these same options for every invocation of 'make'.
 # Otherwise it will rebuild in %%install due to flags changes.
@@ -443,6 +445,10 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
+* Fri Aug 11 2017 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-9
+- prevent command injection via malicious ssh URLs
+  Resolves: CVE-2017-1000117
+
 * Thu Dec 08 2016 Petr Stodulka <pstodulk@redhat.com> - 1.7.1-8
 - fixes previous patch which add -f option for "git submodule add"
   which incorectly used unsupported option --ignore-missing for

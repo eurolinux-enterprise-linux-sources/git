@@ -3,7 +3,7 @@
 # Pass --without docs to rpmbuild if you don't want the documentation
 Name:           git
 Version:        1.7.1
-Release:        2%{?dist}.1
+Release:        3%{?dist}.1
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -21,6 +21,9 @@ Patch1:         git-cvsimport-Ignore-cvsps-2.2b1-Branches-output.patch
 Patch2:         git-1.6-update-contrib-hooks-path.patch
 Patch3:         git17-rh618108.patch
 Patch4:		git171-CVE-2010-3906.patch
+Patch5:		0001-imap-send-move-ifdef-around.patch
+Patch6:		0002-imap-send-the-subject-of-SSL-certificate-must-match-.patch
+Patch7:		0003-imap-send-support-subjectAltName-as-well.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  desktop-file-utils
@@ -206,6 +209,9 @@ Requires:       emacs-git = %{version}-%{release}
 %patch2 -p1
 %patch3 -p1 -b .rh618108
 %patch4 -p1 -b .CVE-2010-3906
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
 
 # Use these same options for every invocation of 'make'.
 # Otherwise it will rebuild in %%install due to flags changes.
@@ -420,7 +426,10 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
-* Thu Dec 16 2010 Adam Tkac <atkac redhat com> 1.7.1-2.1
+* Tue Feb 26 2013 Adam Tkac <atkac redhat com> 1.7.1-3.1
+- fix CVE-2013-0308
+
+* Thu Dec 16 2010 Adam Tkac <atkac redhat com> 1.7.1-3
 - fix CVE-2010-3906
 
 * Tue Jul 27 2010 Adam Tkac <atkac redhat com> 1.7.1-2

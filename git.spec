@@ -1,33 +1,7 @@
 # Pass --without docs to rpmbuild if you don't want the documentation
+%bcond_without docs
 
-# Settings for EL-5
-# - Leave git-* binaries in %{_bindir}
-# - Don't use noarch subpackages
-# - Use proper libcurl devel package
-# - Patch emacs and tweak docbook spaces
-# - Explicitly enable ipv6 for git-daemon
-# - Use prebuilt documentation, asciidoc is too old
-# - Define missing python macro
-%if 0%{?rhel} && 0%{?rhel} <= 5
-%global gitcoredir          %{_bindir}
-%global noarch_sub          0
-%global libcurl_devel       curl-devel
-%global emacs_old           1
-%global docbook_suppress_sp 1
-%global enable_ipv6         1
-%global use_prebuilt_docs   1
-%global filter_yaml_any     1
-%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-%else
 %global gitcoredir          %{_libexecdir}/git-core
-%global noarch_sub          1
-%global libcurl_devel       libcurl-devel
-%global emacs_old           0
-%global docbook_suppress_sp 0
-%global enable_ipv6         0
-%global use_prebuilt_docs   0
-%global filter_yaml_any     0
-%endif
 
 # Use systemd instead of xinetd on Fedora 19+ and RHEL 7+
 %if 0%{?fedora} >= 19 || 0%{?rhel} >= 7
@@ -51,7 +25,7 @@
 
 Name:           git
 Version:        1.8.3.1
-Release:        14%{?dist}
+Release:        19%{?dist}
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -62,15 +36,11 @@ Source3:        git.xinetd.in
 Source4:        git.conf.httpd
 Source5:        git-gui.desktop
 Source6:        gitweb.conf.in
-Source10:       http://git-core.googlecode.com/files/%{name}-manpages-%{version}.tar.gz
-Source11:       http://git-core.googlecode.com/files/%{name}-htmldocs-%{version}.tar.gz
 Source12:       git@.service
 Source13:       git.socket
 Patch0:         git-1.5-gitweb-home-link.patch
 # https://bugzilla.redhat.com/490602
 Patch1:         git-cvsimport-Ignore-cvsps-2.2b1-Branches-output.patch
-# https://bugzilla.redhat.com/600411
-Patch3:         git-1.7-el5-emacs-support.patch
 Patch5:         0001-git-subtree-Use-gitexecdir-instead-of-libexecdir.patch
 # This fixes the build when python is enabled.  Needs discussion upstream to
 # find a proper solution.
@@ -94,10 +64,11 @@ Patch14:        0007-git-prompt.patch
 Patch15:        0008-Fix-CVE-2017-8386.patch
 Patch16:        git-cve-2017-1000117.patch
 Patch19:        git-cve-2018-11235.patch
+Patch20:        0001-Switch-git-instaweb-default-to-apache.patch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-%if ! %{use_prebuilt_docs} && ! 0%{?_without_docs}
+%if %{with docs}
 BuildRequires:  asciidoc >= 8.4.1
 BuildRequires:  xmlto
 %endif
@@ -105,7 +76,7 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  emacs
 BuildRequires:  expat-devel
 BuildRequires:  gettext
-BuildRequires:  %{libcurl_devel}
+BuildRequires:  libcurl-devel
 %if %{gnome_keyring}
 BuildRequires:  libgnome-keyring-devel
 %endif
@@ -143,9 +114,7 @@ SCMs, install the git-all meta-package.
 %package all
 Summary:        Meta-package to pull in all git tools
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 Requires:       git-cvs = %{version}-%{release}
 Requires:       git-email = %{version}-%{release}
@@ -155,6 +124,8 @@ Requires:       git-p4 = %{version}-%{release}
 Requires:       gitk = %{version}-%{release}
 Requires:       perl-Git = %{version}-%{release}
 Requires:       emacs-git = %{version}-%{release}
+Requires:       git-instaweb = %{version}-%{release}
+Requires:       git-gnome-keyring = %{version}-%{release}
 Obsoletes:      git <= 1.5.4.3
 
 %description all
@@ -167,9 +138,7 @@ This is a dummy package which brings in all subpackages.
 %package bzr
 Summary:        Git tools for working with bzr repositories
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 Requires:       bzr
 
@@ -194,9 +163,7 @@ The git dæmon for supporting git:// access to git repositories
 %package -n gitweb
 Summary:        Simple web interface to git repositories
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 
 %description -n gitweb
@@ -205,9 +172,7 @@ Simple web interface to track changes in git repositories
 %package hg
 Summary:        Git tools for working with mercurial repositories
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 Requires:       mercurial
 
@@ -217,9 +182,7 @@ Requires:       mercurial
 %package p4
 Summary:        Git tools for working with Perforce depots
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 BuildRequires:  python
 Requires:       git = %{version}-%{release}
 %description p4
@@ -235,9 +198,7 @@ Git tools for importing Subversion repositories.
 %package cvs
 Summary:        Git tools for importing CVS repositories
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}, cvs
 Requires:       cvsps
 Requires:	perl-DBD-SQLite
@@ -247,9 +208,7 @@ Git tools for importing CVS repositories.
 %package email
 Summary:        Git tools for sending email
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}, perl-Git = %{version}-%{release}
 Requires:       perl(Authen::SASL)
 Requires:       perl(Net::SMTP::SSL)
@@ -259,9 +218,7 @@ Git tools for sending email.
 %package gui
 Summary:        Git GUI tool
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}, tk >= 8.4
 Requires:       gitk = %{version}-%{release}
 %description gui
@@ -270,9 +227,7 @@ Git GUI tool.
 %package -n gitk
 Summary:        Git revision tree visualiser
 Group:          Development/Tools
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}, tk >= 8.4
 %description -n gitk
 Git revision tree visualiser.
@@ -280,9 +235,7 @@ Git revision tree visualiser.
 %package -n perl-Git
 Summary:        Perl interface to Git
 Group:          Development/Libraries
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 BuildRequires:  perl(Error), perl(ExtUtils::MakeMaker)
 Requires:       perl(Error)
@@ -294,9 +247,7 @@ Perl interface to Git.
 %package -n perl-Git-SVN
 Summary:        Perl interface to Git::SVN
 Group:          Development/Libraries
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       git = %{version}-%{release}
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 
@@ -307,12 +258,8 @@ Perl interface to Git.
 Summary:        Git version control system support for Emacs
 Group:          Applications/Editors
 Requires:       git = %{version}-%{release}
-%if %{noarch_sub}
 BuildArch:      noarch
 Requires:       emacs(bin) >= %{_emacs_version}
-%else
-Requires:       emacs-common
-%endif
 
 %description -n emacs-git
 %{summary}.
@@ -320,21 +267,40 @@ Requires:       emacs-common
 %package -n emacs-git-el
 Summary:        Elisp source files for git version control system support for Emacs
 Group:          Applications/Editors
-%if %{noarch_sub}
 BuildArch:      noarch
-%endif
 Requires:       emacs-git = %{version}-%{release}
 
 %description -n emacs-git-el
 %{summary}.
 
+%package instaweb
+Summary:        Repository browser in gitweb
+Group:          Development/Tools
+BuildArch:      noarch
+# to get the definition of _httpd_moddir
+BuildRequires:  httpd-devel
+Requires:       git = %{version}-%{release}
+Requires:       gitweb = %{version}-%{release}
+Requires:       mod_ssl
+Requires:       httpd
+
+%description instaweb
+A simple script to set up gitweb and a web server for browsing the local repository.
+
+%if %{gnome_keyring}
+%package gnome-keyring
+Summary:        Git module for working with gnome-keyring
+BuildRequires:  libgnome-keyring-devel
+Requires:       git = %{version}-%{release}
+Requires:       gnome-keyring
+%description gnome-keyring
+%{summary}.
+%endif
+
 %prep
 %setup -q
 %patch0 -p1
 %patch1 -p1
-%if %{emacs_old}
-%patch3 -p1
-%endif
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
@@ -350,17 +316,9 @@ Requires:       emacs-git = %{version}-%{release}
 %patch17 -p1
 %patch18 -p1
 %patch19 -p1
+%patch20 -p1
 
 chmod a+x t/t0011-hashmap.sh t/t1307-config-blob.sh t/t4139-apply-escape.sh t/t7415-submodule-names.sh
-
-%if %{use_prebuilt_docs}
-mkdir -p prebuilt_docs/{html,man}
-tar xf %{SOURCE10} -C prebuilt_docs/man
-tar xf %{SOURCE11} -C prebuilt_docs/html
-# Remove non-html files
-find prebuilt_docs/html -type f ! -name '*.html' | xargs rm
-find prebuilt_docs/html -type d | xargs rmdir --ignore-fail-on-non-empty
-%endif
 
 # Use these same options for every invocation of 'make'.
 # Otherwise it will rebuild in %%install due to flags changes.
@@ -384,10 +342,6 @@ EOF
 echo gitexecdir = %{_bindir} >> config.mak
 %endif
 
-%if %{docbook_suppress_sp}
-# This is needed for 1.69.1-1.71.0
-echo DOCBOOK_SUPPRESS_SP = 1 >> config.mak
-%endif
 
 # Filter bogus perl requires
 # packed-refs comes from a comment in contrib/hooks/update-paranoid
@@ -395,11 +349,7 @@ echo DOCBOOK_SUPPRESS_SP = 1 >> config.mak
 cat << \EOF > %{name}-req
 #!/bin/sh
 %{__perl_requires} $* |\
-sed \
-%if %{filter_yaml_any}
-    -e '/perl(YAML::Any)/d' \
-%endif
-    -e '/perl(packed-refs)/d'
+sed -e '/perl(packed-refs)/d'
 EOF
 
 %global __perl_requires %{_builddir}/%{name}-%{version}/%{name}-req
@@ -409,9 +359,7 @@ chmod +x %{__perl_requires}
 sh configure --with-c-compiler=gcc
 make %{?_smp_mflags} git-daemon LDFLAGS="-pie -Wl,-z,relro,-z,now" CFLAGS="$RPM_OPT_FLAGS -fPIC"
 make %{?_smp_mflags} all -o git-daemon
-%if ! %{use_prebuilt_docs} && ! 0%{?_without_docs}
-make %{?_smp_mflags} doc
-%endif
+make %{?_smp_mflags} %{?with_docs:doc}
 
 make -C contrib/emacs
 
@@ -427,17 +375,8 @@ sed -i '/^#!bash/,+1 d' contrib/completion/git-completion.bash
 %install
 rm -rf %{buildroot}
 make %{?_smp_mflags} INSTALLDIRS=vendor install -o git-daemon
-%if ! %{use_prebuilt_docs} && ! 0%{?_without_docs}
-make %{?_smp_mflags} INSTALLDIRS=vendor install-doc -o git-daemon
-%else
-cp -a prebuilt_docs/man/* %{buildroot}%{_mandir}
-cp -a prebuilt_docs/html/* Documentation/
-%endif
+make %{?_smp_mflags} INSTALLDIRS=vendor %{?with_docs:install-doc} -o git-daemon
 
-%if %{emacs_old}
-%global _emacs_sitelispdir %{_datadir}/emacs/site-lisp
-%global _emacs_sitestartdir %{_emacs_sitelispdir}/site-start.d
-%endif
 %global elispdir %{_emacs_sitelispdir}/git
 make -C contrib/emacs install \
     emacsdir=%{buildroot}%{elispdir}
@@ -456,7 +395,7 @@ make -C contrib/credential/gnome-keyring/ clean
 %endif
 
 make -C contrib/subtree install
-%if ! %{use_prebuilt_docs}
+%if %{with docs}
 make -C contrib/subtree install-doc
 %endif
 
@@ -476,7 +415,7 @@ rm -rf %{buildroot}%{python_sitelib} %{buildroot}%{gitcoredir}/git-remote-testgi
 # git-archimport is not supported
 find %{buildroot} Documentation -type f -name 'git-archimport*' -exec rm -f {} ';'
 
-exclude_re="archimport|email|git-citool|git-cvs|git-daemon|git-gui|git-remote-bzr|git-remote-hg|gitk|p4|svn"
+exclude_re="archimport|email|git-citool|git-cvs|git-daemon|git-gui|git-remote-bzr|git-remote-hg|gitk|p4|svn|instaweb|gnome-keyring"
 (find %{buildroot}{%{_bindir},%{_libexecdir}} -type f | grep -vE "$exclude_re" | sed -e s@^%{buildroot}@@) > bin-man-doc-files
 (find %{buildroot}{%{_bindir},%{_libexecdir}} -mindepth 1 -type d | grep -vE "$exclude_re" | sed -e 's@^%{buildroot}@%dir @') >> bin-man-doc-files
 (find %{buildroot}%{perl_vendorlib} -type f | sed -e s@^%{buildroot}@@) > perl-git-files
@@ -484,7 +423,7 @@ exclude_re="archimport|email|git-citool|git-cvs|git-daemon|git-gui|git-remote-bz
 # Split out Git::SVN files
 grep Git/SVN perl-git-files > perl-git-svn-files
 sed -i "/Git\/SVN/ d" perl-git-files
-%if %{!?_without_docs:1}0
+%if %{with docs}
 (find %{buildroot}%{_mandir} -type f | grep -vE "$exclude_re|Git" | sed -e s@^%{buildroot}@@ -e 's/$/*/' ) >> bin-man-doc-files
 %else
 rm -rf %{buildroot}%{_mandir}
@@ -496,15 +435,9 @@ mkdir -p %{buildroot}%{_unitdir}
 cp -a %{SOURCE12} %{SOURCE13} %{buildroot}%{_unitdir}
 %else
 mkdir -p %{buildroot}%{_sysconfdir}/xinetd.d
-# On EL <= 5, xinetd does not enable IPv6 by default
-enable_ipv6="        # xinetd does not enable IPv6 by default
-        flags           = IPv6"
 perl -p \
     -e "s|\@GITCOREDIR\@|%{gitcoredir}|g;" \
     -e "s|\@BASE_PATH\@|%{_var}/lib/git|g;" \
-%if %{enable_ipv6}
-    -e "s|^}|$enable_ipv6\n$&|;" \
-%endif
     %{SOURCE3} > %{buildroot}%{_sysconfdir}/xinetd.d/git
 %endif
 
@@ -598,30 +531,30 @@ rm -rf %{buildroot}
 %{gitcoredir}/*p4*
 %{gitcoredir}/mergetools/p4merge
 %doc Documentation/*p4*.txt
-%{!?_without_docs: %{_mandir}/man1/*p4*.1*}
-%{!?_without_docs: %doc Documentation/*p4*.html }
+%{?with_docs: %{_mandir}/man1/*p4*.1*}
+%{?with_docs: %doc Documentation/*p4*.html }
 
 %files svn
 %defattr(-,root,root)
 %{gitcoredir}/*svn*
 %doc Documentation/*svn*.txt
-%{!?_without_docs: %{_mandir}/man1/*svn*.1*}
-%{!?_without_docs: %doc Documentation/*svn*.html }
+%{?with_docs: %{_mandir}/man1/*svn*.1*}
+%{?with_docs: %doc Documentation/*svn*.html }
 
 %files cvs
 %defattr(-,root,root)
 %doc Documentation/*git-cvs*.txt
 %{_bindir}/git-cvsserver
 %{gitcoredir}/*cvs*
-%{!?_without_docs: %{_mandir}/man1/*cvs*.1*}
-%{!?_without_docs: %doc Documentation/*git-cvs*.html }
+%{?with_docs: %{_mandir}/man1/*cvs*.1*}
+%{?with_docs: %doc Documentation/*git-cvs*.html }
 
 %files email
 %defattr(-,root,root)
 %doc Documentation/*email*.txt
 %{gitcoredir}/*email*
-%{!?_without_docs: %{_mandir}/man1/*email*.1*}
-%{!?_without_docs: %doc Documentation/*email*.html }
+%{?with_docs: %{_mandir}/man1/*email*.1*}
+%{?with_docs: %doc Documentation/*email*.html }
 
 %files gui
 %defattr(-,root,root)
@@ -629,27 +562,27 @@ rm -rf %{buildroot}
 %{gitcoredir}/git-citool
 %{_datadir}/applications/*git-gui.desktop
 %{_datadir}/git-gui/
-%{!?_without_docs: %{_mandir}/man1/git-gui.1*}
-%{!?_without_docs: %doc Documentation/git-gui.html}
-%{!?_without_docs: %{_mandir}/man1/git-citool.1*}
-%{!?_without_docs: %doc Documentation/git-citool.html}
+%{?with_docs: %{_mandir}/man1/git-gui.1*}
+%{?with_docs: %doc Documentation/git-gui.html}
+%{?with_docs: %{_mandir}/man1/git-citool.1*}
+%{?with_docs: %doc Documentation/git-citool.html}
 
 %files -n gitk
 %defattr(-,root,root)
 %doc Documentation/*gitk*.txt
 %{_bindir}/*gitk*
 %{_datadir}/gitk
-%{!?_without_docs: %{_mandir}/man1/*gitk*.1*}
-%{!?_without_docs: %doc Documentation/*gitk*.html }
+%{?with_docs: %{_mandir}/man1/*gitk*.1*}
+%{?with_docs: %doc Documentation/*gitk*.html }
 
 %files -n perl-Git -f perl-git-files
 %defattr(-,root,root)
 %exclude %{_mandir}/man3/*Git*SVN*.3pm*
-%{!?_without_docs: %{_mandir}/man3/*Git*.3pm*}
+%{?with_docs:%{_mandir}/man3/*Git*.3pm*}
 
 %files -n perl-Git-SVN -f perl-git-svn-files
 %defattr(-,root,root)
-%{!?_without_docs: %{_mandir}/man3/*Git*SVN*.3pm*}
+%{?with_docs:%{_mandir}/man3/*Git*SVN*.3pm*}
 
 %files -n emacs-git
 %defattr(-,root,root)
@@ -673,8 +606,8 @@ rm -rf %{buildroot}
 %endif
 %{gitcoredir}/git-daemon
 %{_var}/lib/git
-%{!?_without_docs: %{_mandir}/man1/*daemon*.1*}
-%{!?_without_docs: %doc Documentation/*daemon*.html}
+%{?with_docs: %{_mandir}/man1/*daemon*.1*}
+%{?with_docs: %doc Documentation/*daemon*.html}
 
 %files -n gitweb
 %defattr(-,root,root)
@@ -683,13 +616,56 @@ rm -rf %{buildroot}
 %config(noreplace)%{_sysconfdir}/httpd/conf.d/git.conf
 %{_var}/www/git/
 
+%files instaweb
+%defattr(-,root,root)
+%{gitcoredir}/git-instaweb
+%{?with_docs: %{_mandir}/man1/git-instaweb.1*}
+%{?with_docs: %doc Documentation/git-instaweb.html}
+
+%if %{gnome_keyring}
+%files gnome-keyring
+%defattr(-,root,root)
+%{gitcoredir}/git-credential-gnome-keyring
+%endif
+
 
 %files all
 # No files for you!
 
 %changelog
+* Wed Aug 29 2018 Sebastian Kisela <skisela@redhat.com> - 1.8.3.1-19
+- Fix httpd modules path to be independent from system architecture.
+Upstream commit: 1976311aa285549599e5a451d7ad72b55a2b60e2
+Resolves: #1213059
+
+* Fri Jul 13 2018 Pavel Cahyna <pcahyna@redhat.com> - 1.8.3.1-18
+- Use the correct apache module directory in instaweb.
+- Apply the docs fixes to instaweb as well.
+
+* Tue Jul 10 2018 Pavel Cahyna <pcahyna@redhat.com> - 1.8.3.1-17
+- Correctly return an error from fsck on encountering a .gitmodules symlink.
+  This was broken in the debian 2.1.x backport and found by covscan.
+  Fix the test to catch this.
+- Correct a typo in changelog.
+
+* Mon Jul 02 2018 Sebastian Kisela <skisela@redhat.com> - 1.8.3.1-16
+- Remove EL-5 settings and old Fedora conditionals.
+  Taken from fedora commits 903d8f35ed8ae16bece8ae8033f3d3926cc97595 and
+  2c6eff99d7b50b87e8a1fe2e4a0489dfd90659b8.
+- Fix builds using '--without docs'
+- Change git-instaweb default from lighttpd(not available in rhel7) to
+  apache2.
+- Add requires for git-{instaweb,gnome-keyring} to pull them, when
+  installing git-all.
+
+* Tue Jun 19 2018 Sebastian Kisela <skisela@redhat.com> - 1.8.3.1-15
+- move instaweb to separate git-instaweb subpackage.
+	Resolves: #1213059
+- move gnome-keyring to a separate git-gnome-keyring subpackage.
+	Resolves: #1284081
+
 * Mon Jun 18 2018 Pavel Cahyna <pcahyna@redhat.com> - 1.8.3.1-14
-- Backport fix for CVE-2018-1123
+- Backport fix for CVE-2018-11235
 - Thanks to Jonathan Nieder <jrnieder@gmail.com> for backporting to 2.1.x
   and to Steve Beattie <sbeattie@ubuntu.com> for backporting to 1.9.1
 

@@ -51,7 +51,7 @@
 
 Name:           git
 Version:        1.8.3.1
-Release:        12%{?dist}
+Release:        13%{?dist}
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -83,7 +83,10 @@ Patch9:         0003-transport-refactor-protocol-whitelist-code.patch
 Patch10:        0004-http-limit-redirection-to-protocol-whitelist.patch
 Patch11:        0005-http-limit-redirection-depth.patch
 
+# various non-CVE bugs
 Patch13:        0001-http-control-GSSAPI-credential-delegation.patch
+Patch17:        0009-remote-curl-fall-back-to-Basic-auth-if-Negotiate-fai.patch
+Patch18:        git-request-pull-fix.patch
 
 # CVE
 Patch12:        0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
@@ -343,6 +346,8 @@ Requires:       emacs-git = %{version}-%{release}
 %patch14 -p1
 %patch15 -p1
 %patch16 -p1
+%patch17 -p1
+%patch18 -p1
 
 %if %{use_prebuilt_docs}
 mkdir -p prebuilt_docs/{html,man}
@@ -668,6 +673,12 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
+* Wed Sep 13 2017 Petr Stodulka <pstodulk@redhat.com> - 1.8.3.1-13
+- fall back to Basic auth if Negotiate fails
+  Resolves: #1490998
+- handle request-pull when multiple tags point to the same commit
+  Resolves: #1192146
+
 * Fri Aug 11 2017 Petr Stodulka <pstodulk@redhat.com> - 1.8.3.1-12
 - prevent command injection via malicious ssh URLs
   Resolves: CVE-2017-1000117

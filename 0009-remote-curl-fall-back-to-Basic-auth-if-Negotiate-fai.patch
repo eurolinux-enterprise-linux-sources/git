@@ -1,0 +1,47 @@
+From d6c38a748291246ebe2f7a9e966db24f4b4f839c Mon Sep 17 00:00:00 2001
+From: Petr Stodulka <pstodulk@redhat.com>
+Date: Wed, 13 Sep 2017 03:09:59 +0200
+Subject: [PATCH] remote-curl: fall back to Basic auth if Negotiate fails
+
+See the upstream commit 4dbe66464
+---
+ http.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/http.c b/http.c
+index e7c77c0..3320590 100644
+--- a/http.c
++++ b/http.c
+@@ -60,6 +60,9 @@ static const char *user_agent;
+ 
+ static struct credential cert_auth = CREDENTIAL_INIT;
+ static int ssl_cert_password_required;
++#ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
++static unsigned long http_auth_methods = CURLAUTH_ANY;
++#endif
+ 
+ static struct curl_slist *pragma_header;
+ static struct curl_slist *no_pragma_header;
+@@ -572,6 +575,9 @@ struct active_request_slot *get_active_slot(void)
+ 	curl_easy_setopt(slot->curl, CURLOPT_UPLOAD, 0);
+ 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
+ 	curl_easy_setopt(slot->curl, CURLOPT_FAILONERROR, 1);
++#ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
++	curl_easy_setopt(slot->curl, CURLOPT_HTTPAUTH, http_auth_methods);
++#endif
+ 	if (http_auth.password)
+ 		init_curl_http_auth(slot->curl);
+ 
+@@ -856,6 +862,9 @@ int handle_curl_result(struct slot_results *results)
+ 			credential_reject(&http_auth);
+ 			return HTTP_NOAUTH;
+ 		} else {
++#ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
++			http_auth_methods &= ~CURLAUTH_GSSNEGOTIATE;
++#endif
+ 			credential_fill(&http_auth);
+ 			return HTTP_REAUTH;
+ 		}
+-- 
+2.13.5
+

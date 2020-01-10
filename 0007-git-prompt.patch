@@ -1,0 +1,53 @@
+From 7e546ae76da784185ba9515ed86e435ba17fdd65 Mon Sep 17 00:00:00 2001
+From: Petr Stodulka <pstodulk@redhat.com>
+Date: Wed, 29 Mar 2017 13:08:28 +0200
+Subject: [PATCH] git-prompt.sh: don't put unsanitized branch names in $PS1
+
+---
+ contrib/completion/git-prompt.sh | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/contrib/completion/git-prompt.sh b/contrib/completion/git-prompt.sh
+index eaf5c36..2c872e5 100644
+--- a/contrib/completion/git-prompt.sh
++++ b/contrib/completion/git-prompt.sh
+@@ -360,8 +360,11 @@ __git_ps1 ()
+ 		fi
+ 
+ 		local f="$w$i$s$u"
++		b=${b##refs/heads/}
+ 		if [ $pcmode = yes ]; then
+ 			local gitstring=
++			__git_ps1_branch_name=$b
++			b="\${__git_ps1_branch_name}"
+ 			if [ -n "${GIT_PS1_SHOWCOLORHINTS-}" ]; then
+ 				local c_red='\e[31m'
+ 				local c_green='\e[32m'
+@@ -371,7 +374,7 @@ __git_ps1 ()
+ 				local ok_color=$c_green
+ 				local branch_color="$c_clear"
+ 				local flags_color="$c_lblue"
+-				local branchstring="$c${b##refs/heads/}"
++				local branchstring="$c$b"
+ 
+ 				if [ $detached = no ]; then
+ 					branch_color="$ok_color"
+@@ -400,13 +403,13 @@ __git_ps1 ()
+ 				fi
+ 				gitstring="$gitstring\[$c_clear\]$r$p"
+ 			else
+-				gitstring="$c${b##refs/heads/}${f:+ $f}$r$p"
++				gitstring="$c$b${f:+ $f}$r$p"
+ 			fi
+ 			gitstring=$(printf -- "$printf_format" "$gitstring")
+ 			PS1="$ps1pc_start$gitstring$ps1pc_end"
+ 		else
+ 			# NO color option unless in PROMPT_COMMAND mode
+-			printf -- "$printf_format" "$c${b##refs/heads/}${f:+ $f}$r$p"
++			printf -- "$printf_format" "$c$b${f:+ $f}$r$p"
+ 		fi
+ 	fi
+ }
+-- 
+2.5.5
+

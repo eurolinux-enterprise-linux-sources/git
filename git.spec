@@ -51,7 +51,7 @@
 
 Name:           git
 Version:        1.8.3.1
-Release:        13%{?dist}
+Release:        14%{?dist}
 Summary:        Fast Version Control System
 License:        GPLv2
 Group:          Development/Tools
@@ -93,6 +93,7 @@ Patch12:        0001-Fix-CVE-2016-2315-CVE-2016-2324.patch
 Patch14:        0007-git-prompt.patch
 Patch15:        0008-Fix-CVE-2017-8386.patch
 Patch16:        git-cve-2017-1000117.patch
+Patch19:        git-cve-2018-11235.patch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -348,6 +349,9 @@ Requires:       emacs-git = %{version}-%{release}
 %patch16 -p1
 %patch17 -p1
 %patch18 -p1
+%patch19 -p1
+
+chmod a+x t/t0011-hashmap.sh t/t1307-config-blob.sh t/t4139-apply-escape.sh t/t7415-submodule-names.sh
 
 %if %{use_prebuilt_docs}
 mkdir -p prebuilt_docs/{html,man}
@@ -547,6 +551,17 @@ rm -f {Documentation/technical,contrib/emacs,contrib/credential/gnome-keyring}/.
 chmod a-x Documentation/technical/api-index.sh
 find contrib -type f | xargs chmod -x
 
+%check
+# Tests to skip on all releases and architectures
+# t9001-send-email - Can't locate Data/Dumper.pm in @INC - prbly missing dep
+GIT_SKIP_TESTS="t9001"
+
+export GIT_SKIP_TESTS
+
+# Set LANG so various UTF-8 tests are run
+export LANG=en_US.UTF-8
+
+make test
 
 %clean
 rm -rf %{buildroot}
@@ -673,6 +688,11 @@ rm -rf %{buildroot}
 # No files for you!
 
 %changelog
+* Mon Jun 18 2018 Pavel Cahyna <pcahyna@redhat.com> - 1.8.3.1-14
+- Backport fix for CVE-2018-1123
+- Thanks to Jonathan Nieder <jrnieder@gmail.com> for backporting to 2.1.x
+  and to Steve Beattie <sbeattie@ubuntu.com> for backporting to 1.9.1
+
 * Wed Sep 13 2017 Petr Stodulka <pstodulk@redhat.com> - 1.8.3.1-13
 - fall back to Basic auth if Negotiate fails
   Resolves: #1490998
